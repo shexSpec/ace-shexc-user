@@ -20,7 +20,9 @@
     <div id="shexc-demo"></div>
     <script type="text/javascript">
   // example to render
-  const exampleURL = 'https://raw.githubusercontent.com/shexSpec/ace-shexc-support/master/demo/kitchen-sink/docs/shexc.shex'
+  const loadURL = location.search
+    ? parseSearch(location.search.substr(1)).loadURL
+    : 'https://raw.githubusercontent.com/shexSpec/ace-shexc-support/master/demo/kitchen-sink/docs/shexc.shex'
 
   // set up editor
   const editor = ace.edit("shexc-demo")
@@ -29,11 +31,19 @@
   editor.setFontSize("18px")
 
   // load example
-  fetch(exampleURL)
+  fetch(loadURL)
     .then(resp => resp.text()).then(function (txt) {
       // populate with loaded example
       editor.setValue(txt, 1)
     })
+
+  function parseSearch (str) {
+    return str.split(/[&;]/).reduce((acc, parm) => {
+      const [attr, val] = parm.split(/=/);
+      if (attr in acc) acc[attr] = [acc[attr], val];
+      else acc[attr] = val;
+      return acc }, {})
+  }
     </script>
   </body>
 </html>
