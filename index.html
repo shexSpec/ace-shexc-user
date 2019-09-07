@@ -19,31 +19,29 @@
   <body>
     <div id="shexc-demo"></div>
     <script type="text/javascript">
-  // example to render
-  const loadURL = location.search
-    ? parseSearch(location.search.substr(1)).loadURL
-    : 'https://raw.githubusercontent.com/shexSpec/ace-shexc-support/master/demo/kitchen-sink/docs/shexc.shex'
+// set up editor
+const editor = ace.edit("shexc-demo")
+editor.setTheme("ace/theme/textmate")
+editor.session.setMode("ace/mode/shexc")
+editor.setFontSize("18px")
+// editor is now set up and ready to use
 
-  // set up editor
-  const editor = ace.edit("shexc-demo")
-  editor.setTheme("ace/theme/textmate")
-  editor.session.setMode("ace/mode/shexc")
-  editor.setFontSize("18px")
-
-  // load example
-  fetch(loadURL)
-    .then(resp => resp.text()).then(function (txt) {
-      // populate with loaded example
-      editor.setValue(txt, 1)
-    })
-
-  function parseSearch (str) {
-    return str.split(/[&;]/).reduce((acc, parm) => {
-      const [attr, val] = parm.split(/=/);
-      if (attr in acc) acc[attr] = [acc[attr], val];
-      else acc[attr] = val;
-      return acc }, {})
-  }
+// load from query string or demoURL:
+const demoURL = 'https://raw.githubusercontent.com/shexSpec/ace-shexc-support/master/demo/kitchen-sink/docs/shexc.shex'
+Promise.all(
+  location.search
+    ? location.search.substr(1)
+    .split(/[&;]/).reduce((acc, parm) => {
+      const [attr, val] = parm.split(/=/).map(unescape)
+      return acc.concat(
+        attr === "schema"
+          ? Promise.resolve(val)
+          : attr === "schemaURL"
+          ? fetch(val).then(resp => resp.text())
+          : Promise.resolve(Error(`unknown parameter ${attr}=${val}\n`)))
+    }, [])
+    : [fetch(demoURL).then(resp => resp.text())]
+).then(loaded => editor.setValue(loaded.join(""), 1))
     </script>
   </body>
 </html>
