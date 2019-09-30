@@ -28,15 +28,22 @@ editor.setFontSize("18px")
 
 // load from query string or demoURL:
 const demoURL = 'https://raw.githubusercontent.com/shexSpec/ace-shexc-support/master/demo/kitchen-sink/docs/shexc.shex'
+// const trim = 'https://shexspec.github.io/ace-shexc-user/?schemaURL='
+// const trim = 'http://localhost/checkouts/shexSpec/ace-shexc-user/?schemaURL='
+let base = new URL(location.href)
+base.search = ""
+base = base.href
+console.log(base)
 Promise.all(
   location.search
     ? location.search.substr(1)
     .split(/[&;]/).reduce((acc, parm) => {
-      const [attr, val] = parm.split(/=/).map(unescape)
-      return acc.concat(
-        attr === "schema"
+      let [attr, val] = parm.split(/=/).map(unescape).map(s => s.replace(/\+/g, " "))
+      val = val.replace(base + '?' + attr + '=', '') // trim redundant UUU?schemaURL=UUU?schemaURL=...
+      return !val ? acc : acc.concat(
+        attr === "schema" && val
           ? Promise.resolve(val)
-          : attr === "schemaURL"
+          : attr === "schemaURL" && val
           ? fetch(val).then(resp => resp.text())
           : Promise.resolve(Error(`unknown parameter ${attr}=${val}\n`)))
     }, [])
