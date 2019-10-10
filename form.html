@@ -1,0 +1,132 @@
+<html>
+  <head>
+    <title>invoke ace-shex-user</title>
+    <style>
+      h1 { text-align: center; margin: 0; color: #33f; font-size: 1.4em; }
+      *[name=schemaURL] { width: 33%; margin-right: .2em; }
+      *[name=schema] { width: 100%; height: 20%; margin-bottom: .2ex; }
+      .plus { font-size: .7em; padding: 0; cursor: copy; }
+      .hover { border: .25em dashed #f0a133; }
+    </style>
+  </head>
+  <body>
+    <h1>invoke ace-shex-user</h1>
+    <form method="get" action="ace-shexc">
+      <p>
+        <label for="schemaURL">schemaURL:</label> <span class="wrapper"><input type="text" name="schemaURL"/></span><br/>
+        <label for="schema">schema:</label><span class="wrapper"><textarea name="schema"></textarea></span>
+        <input type="submit" value="Submit"/>
+      </p>
+    </form>
+    <!-- The following javascript is not necessary for basic functionality, -->
+    <script type="application/javascript">
+      const wrappers = document.querySelectorAll(".wrapper")
+      wrappers.forEach(wrapper => enableDragAndDrop(wrapper.firstChild))
+      wrappers.forEach(addPlusses)
+
+      function addPlusses (wrapper) {
+        const button = document.createElement("button")
+        button.setAttribute("class", "plus")
+        button.textContent = "+"
+        button.onclick = (evt) => {
+          evt.preventDefault()
+          addChild(wrapper)
+        }
+        wrapper.prepend(button)
+      }
+
+      function addChild (parent) {
+        const target = parent.lastElementChild
+        const clone = target.cloneNode()
+        clone.value = ''
+        parent.appendChild(clone)
+        return clone
+      }
+
+      async function enableDragAndDrop (elt) {
+        const ons = ["ondragover", "ondragenter"]
+        const offs = ["ondragend", "ondragleave"]
+        ons.forEach(e => elt[e] = evt => elt.classList.add("hover"))
+        offs.forEach(e => elt[e] = evt => elt.classList.remove("hover"))
+        elt.ondrop = function (evt) {
+          elt.classList.remove("hover")
+          evt.preventDefault()
+          let xfer = evt.dataTransfer;
+          const prefTypes = [
+            {type: "files"},
+            {type: "text/uri-list"},
+            {type: "text/shex"},
+            {type: "text/plain"}
+          ];
+          if (prefTypes.find(l => {
+            if (l.type.indexOf("/") === -1) {
+              if (xfer[l.type].length > 0) {
+                console.log("handling "+xfer[l.type].length+" files...");
+                readfiles(xfer[l.type], elt);
+                return true;
+              }
+            } else {
+              if (xfer.getData(l.type)) {
+                var val = xfer.getData(l.type);
+                console.log("handling "+l.type+"...");
+                if (l.type === "text/uri-list") {
+                  val.split(/\r?\n/)           // split on newline
+                    .filter(l => l[0] !== '#') // strip out comments
+                    .forEach(async (uri, idx) => {
+                      if (idx > 0)
+                        elt = addChild(elt.parentElement)
+                      if (elt.getAttribute("name") === "schema") {
+                        console.log(uri)
+                        const resp = await fetch(uri, { headers: {Accept: "text/shex,text/plain"}})
+                        const text = await resp.text()
+                        elt.value = text
+                      } else {
+                        console.log(uri)
+                        elt.value = uri
+                      }
+                    })
+                } else /* if (l.type === "text/plain") */ {
+                  elt.value = val;
+                }
+                return true;
+              }
+            }
+            return false;
+          }) === undefined)
+            alert(
+              "drag and drop not recognized:\n" +
+                JSON.stringify({
+                  dropEffect: xfer.dropEffect,
+                  effectAllowed: xfer.effectAllowed,
+                  files: xfer.files.length,
+                  items: [].slice.call(xfer.items).map(i => {
+                    return {kind: i.kind, type: i.type}
+                  })
+                }, null, 2)
+            )
+        }
+      }
+
+      function readfiles(files, target) {
+        var sucecesses = 0;
+
+        for (var i = 0; i < files.length; i++) {
+          var file = files[i], name = file.name;
+          if (i > 0)
+            target = addChild(target.parentElement)
+          var formData = new FormData();
+          formData.append("file", file);
+          var reader = new FileReader();
+          reader.onload = (function (target) {
+            return function (event) {
+              target.value = event.target.result
+            }
+          })(target);
+          reader.readAsText(file);
+          ++sucecesses;
+        }
+        console.log("loaded "+sucecesses+" files.");
+      }
+    </script>
+  </body>
+</html>
